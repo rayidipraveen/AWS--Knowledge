@@ -1,0 +1,131 @@
+Backdrop : 
+
+We would like to bring all teh nodes in the Account under SSM.
+
+Steps followed :: 
+
+  Configure Hostmanagement configuration in Systems Manager 
+  But its not getting completed as inventory collection is pending since there is no SSM agent installed in the nodes 
+  The nodes are using ECS specific Amazon Linus 1 which naturally dont have Sm aggent intalled 
+  
+  
+  So AWS has provided the follwoing solution with out logging in to server as we dont have keypair  :: 
+ ########################################### Solution 1 with SSH in to instance #################################### 
+  Hello, 
+
+Firstly, please allow me to thank you for providing the requested details. 
+
+From the information provided, I can see that i-0735237d6b1d0ff74 is a Linux based instance in the us-east-1 region. I can also see that the IAM role attached to the instance ‘tome-core-dedicated-cluster-role’ has the correct IAM roles attached to it for use with SSM (AmazonSSMManagedInstanceCore).
+
+After investigation of the instance, I was also able to see that the SSM document AWS-GatherSoftwareInventory is still in the ‘Pending’ state. As this association is currently stuck in the ‘Pending’ state, it generally indicated that there is an issue on the OS level preventing the information from being gathered correctly. 
+
+In order to further investigate this issue, I would kindly request that you download, and run the SSM Agent Toolkit for Linux, and provide a screenshot of the results. Please do see the following link for more information on how to download, and run the SSM Agent Toolkit for Linux.
+
+Please do not hesitate to reply should you have any further questions or queries. 
+
+Have a great day!
+
+Resources:
+[1] https://github.com/awslabs/aws-support-tools/tree/master/Systems%20Manager/SSMAGENT-TOOLKIT-LINUX 
+
+################################### Solution 1 End ##########################################################
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Solution 2  with userdata  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+Hello,
+
+Thank you for contacting AWS Premium Support. My name is Paul and I will be assisting you with your case today.
+
+I understand that you ran into an issue while attempting to gather inventory from your EC2 instance using Systems Manager.
+
+From the case details, I could also see that you do not have an alternative method of accessing the EC2 instance e.g. using SSH therefore making it difficult to run the script suggested by my colleague William.
+
+During my review of the EC2 instance 'i-0735237d6b1d0ff74', I observed the following:
+
+	- The associated security group has been properly configured to allow outbound HTTPs (443) traffic to the Systems Manager endpoints.
+
+	- The NACL's outbound rules also allow HTTPs (443) traffic to the Systems Manager endpoints.
+
+	- The associated IAM role 'tome-core-dedicated-cluster-role' has the required permissions to access Systems Manager.
+
+	- From the instance's console logs, I did not see the SSM agent present.
+
+I further checked and noticed that the AMI 'ami-0bb34d57ff66af6b1' is an Amazon Linux 1 ECS optimized AMI which does not come pre-installed with the SSM agent.
+
+As discussed here [1]:
+
+	In most cases, SSM Agent is preinstalled on AMIs provided by AWS for the following operating systems (OSs):
+
+    - Amazon Linux Base AMIs dated 2017.09 and later
+
+    - Amazon Linux 2
+
+    - Amazon Linux 2 ECS-Optimized Base AMIs
+
+    - macOS 10.14.x (Mojave), 10.15.x (Catalina), and 11.x (Big Sur)
+
+    - SUSE Linux Enterprise Server (SLES) 12 and 15
+
+    - Ubuntu Server 16.04, 18.04, and 20.04
+
+    - Windows Server 2008-2012 R2 AMIs published in November 2016 or later
+
+    - Windows Server 2016, 2019, and 2022
+
+To fix the issue, you can manually install the SSM agent using a user data script as follows:
+
+		- Since your instance is part of an AutoScaling group, kindly remove it temporarily to perform the steps below. Please refer to the following links:
+		https://docs.aws.amazon.com/autoscaling/ec2/userguide/as-enter-exit-standby.html 
+		https://docs.aws.amazon.com/autoscaling/ec2/userguide/as-enter-exit-standby.html#standby-state-console 
+
+		- Stop the EC2 instance 'i-0735237d6b1d0ff74'.
+
+		- Choose Actions, choose Instance Settings, and then choose Edit User Data.
+
+		- Copy the following user data script into the Edit user data box, and then choose Save.
+
+Content-Type: multipart/mixed; boundary="//"
+MIME-Version: 1.0
+
+--//
+Content-Type: text/cloud-config; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment; filename="cloud-config.txt"
+
+#cloud-config
+cloud_final_modules:
+- [scripts-user, always]
+
+--//
+Content-Type: text/x-shellscript; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment; filename="userdata.txt"
+
+#!/bin/bash
+yum install -y https://s3.us-east-1.amazonaws.com/amazon-ssm-us-east-1/latest/linux_amd64/amazon-ssm-agent.rpm  
+start amazon-ssm-agent
+--//--
+
+			- Start your EC2 instance again.
+
+			- After you have confirmed the SSM agent has been installed and running properly, kindly remove the above user data script as it is configured to run on every reboot. 
+
+                        - Add the instance back to the AutoScaling group ' EC2ContainerService-tome-core-dedicated-cluster-EcsInstanceAsg-NCLOFNK7J58W':
+                        https://docs.aws.amazon.com/autoscaling/ec2/userguide/as-enter-exit-standby.html#standby-state-console 
+
+I trust this correspondence proves useful. Should you have any other questions or need additional clarification, please feel free to get back to us and we will be happy to assist you.
+
+Reference:
+========
+
+[1] https://docs.aws.amazon.com/systems-manager/latest/userguide/ami-preinstalled-agent.html 
+
+We value your feedback. Please share your experience by rating this correspondence using the AWS Support Center link at the end of this correspondence. Each correspondence can also be rated by selecting the stars in top right corner of each correspondence within the AWS Support Center.
+
+Best regards,
+Paul  M.
+Amazon Web Services
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% solution 2 end %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
